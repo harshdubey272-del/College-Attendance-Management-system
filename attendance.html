@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>College Attendance</title>
+  <style>
+    /* ---------- COLORS (change them here) ---------- */
+    :root {
+      --bg: #f3f5f9;
+      --card: #ffffff;
+      --text: #222222;
+      --blue: #2b6cb0;
+      --green: #2f855a;
+      --red: #c53030;
+      --border: #dddddd;
+    }
+
+    /* ---------- PAGE LOOK ---------- */
+    body {
+      font-family: Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 20px;
+    }
+    .box {
+      max-width: 800px;
+      margin: 0 auto 20px auto;
+      background: var(--card);
+      padding: 20px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+    }
+    h1 { text-align: center; color: var(--blue); }
+    h2 { margin-top: 0; }
+    input {
+      padding: 8px;
+      margin: 4px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    button {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+    }
+    .blue  { background: var(--blue); }
+    .green { background: var(--green); }
+    .red   { background: var(--red); }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 10px; border-bottom: 1px solid var(--border); text-align: left; }
+    th { background: var(--blue); color: white; }
+  </style>
+</head>
+<body>
+
+  <h1>College Attendance</h1>
+
+  <!-- Box 1: add a student -->
+  <div class="box">
+    <h2>Add Student</h2>
+    <input type="text" id="nameInput" placeholder="Student name">
+    <input type="text" id="rollInput" placeholder="Roll number">
+    <button class="blue" onclick="addStudent()">Add</button>
+  </div>
+
+  <!-- Box 2: attendance table -->
+  <div class="box">
+    <h2>Mark Attendance</h2>
+    <label>Date: <input type="date" id="dateInput" onchange="showTable()"></label>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Roll</th>
+            <th>Name</th>
+            <th>Mark</th>
+            <th>Today</th>
+            <th>Attendance %</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    // ---------- 1. DATA ----------
+    // Each student looks like: { name: "Ravi", roll: "101", records: { "2026-10-09": "P" } }
+    // "P" means Present, "A" means Absent
+    var students = [];
+
+    // ---------- 2. SAVE AND LOAD (keeps data after refresh) ----------
+    function saveData() {
+      try {
+        localStorage.setItem("students", JSON.stringify(students));
+      } catch (e) {}
+    }
+
+    function loadData() {
+      try {
+        var saved = localStorage.getItem("students");
+        if (saved) {
+          students = JSON.parse(saved);
+        }
+      } catch (e) {}
+    }
+
+    // ---------- 3. ADD A STUDENT ----------
+    function addStudent() {
+      var name = document.getElementById("nameInput").value.trim();
+      var roll = document.getElementById("rollInput").value.trim();
+
+      if (name === "" || roll === "") {
+        alert("Please enter name and roll number");
+        return;
+      }
+
+      students.push({ name: name, roll: roll, records: {} });
+
+      document.getElementById("nameInput").value = "";
+      document.getElementById("rollInput").value = "";
+
+      saveData();
+      showTable();
+    }
+
+    // ---------- 4. MARK PRESENT OR ABSENT ----------
+    function mark(index, status) {
+      var date = document.getElementById("dateInput").value;
+      students[index].records[date] = status;
+      saveData();
+      showTable();
+    }
+
+    // ---------- 5. DELETE A STUDENT ----------
+    function removeStudent(index) {
+      if (confirm("Delete this student?")) {
+        students.splice(index, 1);
+        saveData();
+        showTable();
+      }
+    }
+
+    // ---------- 6. CALCULATE PERCENTAGE ----------
+    function getPercentage(student) {
+      var days = Object.values(student.records);   // e.g. ["P", "A", "P"]
+      if (days.length === 0) {
+        return "-";
+      }
+      var presentDays = days.filter(function (d) { return d === "P"; }).length;
+      return Math.round((presentDays / days.length) * 100) + "%";
+    }
+
+    // ---------- 7. SHOW THE TABLE ----------
+    function showTable() {
+      var date = document.getElementById("dateInput").value;
+      var html = "";
+
+      if (students.length === 0) {
+        html = "<tr><td colspan='6'>No students yet. Add one above.</td></tr>";
+      }
+
+      for (var i = 0; i < students.length; i++) {
+        var s = students[i];
+        var status = s.records[date];   // "P", "A" or undefined
+        var statusText = "Not marked";
+        if (status === "P") { statusText = "Present"; }
+        if (status === "A") { statusText = "Absent"; }
+
+        html += "<tr>" +
+          "<td>" + s.roll + "</td>" +
+          "<td>" + s.name + "</td>" +
+          "<td>" +
+            "<button class='green' onclick='mark(" + i + ", \"P\")'>P</button> " +
+            "<button class='red' onclick='mark(" + i + ", \"A\")'>A</button>" +
+          "</td>" +
+          "<td>" + statusText + "</td>" +
+          "<td>" + getPercentage(s) + "</td>" +
+          "<td><button class='red' onclick='removeStudent(" + i + ")'>Delete</button></td>" +
+        "</tr>";
+      }
+
+      document.getElementById("tableBody").innerHTML = html;
+    }
+
+    // ---------- 8. START THE PAGE ----------
+    // Set the date box to today's date
+    document.getElementById("dateInput").value = new Date().toISOString().slice(0, 10);
+    loadData();
+    showTable();
+  </script>
+</body>
+</html>
